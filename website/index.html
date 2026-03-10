@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VaultNet — Secure Banking</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --ink:    #0a0a0f;
+    --paper:  #f5f3ee;
+    --gold:   #c9a84c;
+    --gold2:  #e8c96a;
+    --dim:    #6b6860;
+    --line:   #d8d4ca;
+    --red:    #c0392b;
+    --green:  #1a6b3a;
+    --card:   #ffffff;
+    --shadow: 0 2px 24px rgba(10,10,15,0.08);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem; height: 60px;
+    border-bottom: 1px solid #1e1e28;
+  }
+  .logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--gold); letter-spacing: 0.04em; }
+  .logo span { color: #fff; }
+  .header-right { display: flex; align-items: center; gap: 1.2rem; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 6px #2ecc71; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .header-user { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: #888; letter-spacing: 0.05em; }
+  .btn-logout {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.08em;
+    color: var(--gold); background: none; border: 1px solid #333; border-radius: 4px;
+    padding: 6px 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-logout:hover { background: #1a1a22; border-color: var(--gold); }
+
+  /* SCREENS */
+  .screen { display: none; min-height: calc(100vh - 60px); }
+  .screen.active { display: flex; }
+
+  /* LOGIN */
+  #screen-login {
+    align-items: center; justify-content: center;
+    background: var(--ink); position: relative; overflow: hidden;
+  }
+  #screen-login::before {
+    content: ''; position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none;
+  }
+  .login-box {
+    position: relative; z-index: 1;
+    background: #111118; border: 1px solid #252530; border-radius: 12px;
+    padding: 3rem 3.5rem; width: 420px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+    animation: fadeUp 0.6s ease both;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+  .login-logo { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--gold); text-align: center; margin-bottom: 0.3rem; }
+  .login-tagline { text-align: center; color: #555; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2.5rem; font-family: 'DM Mono', monospace; }
+  .field { margin-bottom: 1.2rem; }
+  .field label { display: block; font-size: 0.72rem; color: #666; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+  .field input { width: 100%; background: #0a0a10; border: 1px solid #2a2a35; border-radius: 6px; padding: 12px 14px; color: #fff; font-family: 'DM Mono', monospace; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  .field input:focus { border-color: var(--gold); }
+  .btn-login { width: 100%; margin-top: 0.8rem; background: var(--gold); border: none; border-radius: 6px; padding: 13px; color: var(--ink); font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; }
+  .btn-login:hover { background: var(--gold2); transform: translateY(-1px); }
+  .login-hint { margin-top: 1.5rem; text-align: center; font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #444; line-height: 1.8; }
+  .login-error { background: rgba(192,57,43,0.12); border: 1px solid rgba(192,57,43,0.3); border-radius: 6px; padding: 10px 14px; color: #e74c3c; font-size: 0.82rem; margin-bottom: 1rem; display: none; font-family: 'DM Mono', monospace; }
+
+  /* DASHBOARD */
+  #screen-dashboard { flex-direction: column; background: var(--paper); padding: 2.5rem; gap: 2rem; }
+  .dash-greeting { font-family: 'DM Serif Display', serif; font-size: 1.9rem; color: var(--ink); }
+  .dash-greeting span { color: var(--gold); font-style: italic; }
+  .dash-subtext { font-size: 0.82rem; color: var(--dim); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+  .cards-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 1.8rem; box-shadow: var(--shadow); animation: fadeUp 0.5s ease both; }
+  .card-label { font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.8rem; }
+  .balance-amount { font-family: 'DM Serif Display', serif; font-size: 2.8rem; color: var(--ink); line-height: 1; }
+  .balance-amount .cents { font-size: 1.4rem; color: var(--dim); }
+  .account-number { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--dim); margin-top: 0.8rem; letter-spacing: 0.1em; }
+  .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: var(--ink); }
+  .stat-change { font-family: 'DM Mono', monospace; font-size: 0.72rem; margin-top: 4px; }
+  .stat-change.up   { color: var(--green); }
+  .stat-change.down { color: var(--red); }
+
+  .transfer-section { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.5rem; }
+  .field-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .field-sm label { display: block; font-size: 0.7rem; color: var(--dim); font-family: 'DM Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; }
+  .field-sm input { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--ink); background: var(--paper); outline: none; transition: border-color 0.2s; }
+  .field-sm input:focus { border-color: var(--gold); }
+  .btn-transfer { width: 100%; margin-top: 1rem; background: var(--ink); color: var(--paper); border: none; border-radius: 6px; padding: 11px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .btn-transfer:hover { background: #1e1e2e; transform: translateY(-1px); }
+  .transfer-result { margin-top: 0.8rem; padding: 10px 14px; border-radius: 6px; font-family: 'DM Mono', monospace; font-size: 0.78rem; display: none; }
+  .transfer-result.ok  { background: rgba(26,107,58,0.08); color: var(--green); border: 1px solid rgba(26,107,58,0.2); }
+  .transfer-result.err { background: rgba(192,57,43,0.08); color: var(--red); border: 1px solid rgba(192,57,43,0.2); }
+
+  .txn-list { display: flex; flex-direction: column; }
+  .txn-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line); animation: fadeUp 0.4s ease both; }
+  .txn-item:last-child { border-bottom: none; }
+  .txn-desc { font-size: 0.88rem; color: var(--ink); font-weight: 500; }
+  .txn-date { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--dim); margin-top: 2px; }
+  .txn-amount { font-family: 'DM Mono', monospace; font-size: 0.9rem; font-weight: 500; }
+  .txn-amount.credit { color: var(--green); }
+  .txn-amount.debit  { color: var(--red); }
+
+  .security-badge { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: rgba(26,107,58,0.06); border: 1px solid rgba(26,107,58,0.15); border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--green); letter-spacing: 0.04em; }
+
+  .loading { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(201,168,76,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 900px) {
+    .cards-row { grid-template-columns: 1fr; }
+    .transfer-section { grid-template-columns: 1fr; }
+    #screen-dashboard { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Vault<span>Net</span></div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <div class="header-user" id="header-user">NOT SIGNED IN</div>
+    <button class="btn-logout" id="btn-logout" style="display:none" onclick="logout()">SIGN OUT</button>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div class="screen active" id="screen-login">
+  <div class="login-box">
+    <div class="login-logo">VaultNet</div>
+    <div class="login-tagline">Secure Private Banking</div>
+    <div class="login-error" id="login-error"></div>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="input-user" placeholder="alice" autocomplete="off"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="input-pass" placeholder="••••••••"/>
+    </div>
+    <button class="btn-login" id="btn-login" onclick="login()">SIGN IN TO VAULTNET</button>
+    <div class="login-hint">demo: alice / alice123 &nbsp;·&nbsp; bob / bob456</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="screen" id="screen-dashboard">
+  <div>
+    <div class="dash-greeting">Good morning, <span id="dash-name">—</span></div>
+    <div class="dash-subtext" id="dash-time">—</div>
+  </div>
+
+  <div class="cards-row">
+    <div class="card" style="animation-delay:0.05s">
+      <div class="card-label">Available Balance</div>
+      <div class="balance-amount" id="dash-balance">$—<span class="cents">.—</span></div>
+      <div class="account-number" id="dash-account">Account: —</div>
+      <div style="margin-top:1.2rem">
+        <div class="security-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          HMAC-SHA256 Protected · Nonce Verified
+        </div>
+      </div>
+    </div>
+    <div class="card" style="animation-delay:0.1s">
+      <div class="card-label">This Month</div>
+      <div class="stat-value">+$5,000</div>
+      <div class="stat-change up">↑ Salary deposited</div>
+    </div>
+    <div class="card" style="animation-delay:0.15s">
+      <div class="card-label">Transactions</div>
+      <div class="stat-value" id="dash-txn-count">—</div>
+      <div class="stat-change down">↓ Recent activity</div>
+    </div>
+  </div>
+
+  <div class="transfer-section">
+    <div class="card" style="animation-delay:0.2s">
+      <div class="card-label">Send Money</div>
+      <div class="field-inline" style="margin-top:1rem">
+        <div class="field-sm">
+          <label>Recipient</label>
+          <input type="text" id="transfer-to" placeholder="bob"/>
+        </div>
+        <div class="field-sm">
+          <label>Amount ($)</label>
+          <input type="number" id="transfer-amount" placeholder="100.00" min="1"/>
+        </div>
+      </div>
+      <button class="btn-transfer" onclick="transfer()">SEND TRANSFER</button>
+      <div class="transfer-result" id="transfer-result"></div>
+    </div>
+
+    <div class="card" style="animation-delay:0.25s">
+      <div class="card-label">Recent Transactions</div>
+      <div class="txn-list" id="txn-list">
+        <div style="color:var(--dim);font-size:0.8rem;padding:1rem 0">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GATEWAY = "http://127.0.0.1:8000";
+let SESSION_TOKEN = null;
+
+async function computeMAC(payload, timestamp, nonce) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode("vaultnet-super-secret-key-2025"),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(`${payload}|${timestamp}|${nonce}`));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function genNonce() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+async function buildRequest(payloadObj) {
+  const payload   = JSON.stringify(payloadObj, Object.keys(payloadObj).sort());
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const nonce     = genNonce();
+  const mac       = await computeMAC(payload, timestamp, nonce);
+  return { payload, timestamp, nonce, mac };
+}
+
+async function apiCall(endpoint, payloadObj) {
+  const body = await buildRequest(payloadObj);
+  const resp = await fetch(`${GATEWAY}/api/${endpoint}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  return resp.json();
+}
+
+async function login() {
+  const username = document.getElementById("input-user").value.trim();
+  const password = document.getElementById("input-pass").value.trim();
+  const btn      = document.getElementById("btn-login");
+  const errBox   = document.getElementById("login-error");
+  if (!username || !password) return;
+
+  btn.innerHTML = '<span class="loading"></span>Authenticating…';
+  btn.disabled  = true;
+  errBox.style.display = "none";
+
+  try {
+    const data = await apiCall("login", { username, password });
+    if (data.status === "success") {
+      SESSION_TOKEN = data.token;
+      showDashboard(data);
+    } else {
+      errBox.textContent   = data.message || "Authentication failed";
+      errBox.style.display = "block";
+    }
+  } catch(e) {
+    errBox.textContent   = "Cannot reach VaultNet gateway. Is it running?";
+    errBox.style.display = "block";
+  }
+  btn.innerHTML = "SIGN IN TO VAULTNET";
+  btn.disabled  = false;
+}
+
+async function showDashboard(loginData) {
+  document.getElementById("screen-login").classList.remove("active");
+  document.getElementById("screen-dashboard").classList.add("active");
+  document.getElementById("header-user").textContent = loginData.name.toUpperCase();
+  document.getElementById("btn-logout").style.display = "block";
+  document.getElementById("dash-name").textContent  = loginData.name.split(" ")[0];
+  document.getElementById("dash-account").textContent = "Account: " + loginData.account;
+  document.getElementById("dash-time").textContent  =
+    new Date().toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  await loadBalance();
+  await loadTransactions();
+}
+
+async function loadBalance() {
+  try {
+    const data = await apiCall("balance", { token: SESSION_TOKEN });
+    if (data.status === "success") {
+      const [d, c] = data.balance.toFixed(2).split(".");
+      document.getElementById("dash-balance").innerHTML =
+        `$${Number(d).toLocaleString()}<span class="cents">.${c}</span>`;
+    }
+  } catch(e) {}
+}
+
+async function loadTransactions() {
+  try {
+    const data = await apiCall("transactions", { token: SESSION_TOKEN });
+    if (data.status === "success") {
+      document.getElementById("dash-txn-count").textContent = data.count;
+      document.getElementById("txn-list").innerHTML = data.transactions.map((t,i) => `
+        <div class="txn-item" style="animation-delay:${i*0.06}s">
+          <div>
+            <div class="txn-desc">${t.desc}</div>
+            <div class="txn-date">${t.date}</div>
+          </div>
+          <div class="txn-amount ${t.amount>0?'credit':'debit'}">
+            ${t.amount>0?'+':''}$${Math.abs(t.amount).toFixed(2)}
+          </div>
+        </div>`).join("");
+    }
+  } catch(e) {}
+}
+
+async function transfer() {
+  const to     = document.getElementById("transfer-to").value.trim();
+  const amount = parseFloat(document.getElementById("transfer-amount").value);
+  const result = document.getElementById("transfer-result");
+  if (!to || !amount || amount <= 0) return;
+  result.style.display = "none";
+  try {
+    const data = await apiCall("transfer", { token: SESSION_TOKEN, to, amount });
+    if (data.status === "success") {
+      result.className = "transfer-result ok";
+      result.textContent = `✓ ${data.message} · ID: ${data.transaction_id}`;
+      result.style.display = "block";
+      await loadBalance(); await loadTransactions();
+    } else {
+      result.className = "transfer-result err";
+      result.textContent = data.message || "Transfer failed";
+      result.style.display = "block";
+    }
+  } catch(e) {
+    result.className = "transfer-result err";
+    result.textContent = "Gateway unreachable";
+    result.style.display = "block";
+  }
+}
+
+async function logout() {
+  if (SESSION_TOKEN) await apiCall("logout", { token: SESSION_TOKEN }).catch(()=>{});
+  SESSION_TOKEN = null;
+  document.getElementById("screen-dashboard").classList.remove("active");
+  document.getElementById("screen-login").classList.add("active");
+  document.getElementById("header-user").textContent = "NOT SIGNED IN";
+  document.getElementById("btn-logout").style.display = "none";
+  document.getElementById("input-pass").value = "";
+}
+
+document.getElementById("input-pass").addEventListener("keydown", e => { if(e.key==="Enter") login(); });
+document.getElementById("input-user").addEventListener("keydown", e => { if(e.key==="Enter") login(); });
+</script>
+</body>
+</html>
