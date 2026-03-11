@@ -173,6 +173,6 @@ def health():
 # ─────────────────────────────────────────
 if __name__ == "__main__":
     print(f"[Gateway] Starting on port {GATEWAY_PORT}...")
-    print(f"[Gateway] Routing fresh → {REAL_BACKEND_URL}")
-    print(f"[Gateway] Routing replays → {HONEYPOT_URL}")
+    print(f"[Gateway] Routing fresh {REAL_BACKEND_URL}")
+    print(f"[Gateway] Routing replays {HONEYPOT_URL}")
     app.run(host="0.0.0.0", port=8000, debug=False)
