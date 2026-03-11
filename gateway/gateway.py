@@ -31,6 +31,8 @@ CORS(app)
 
 # Shared event log for dashboard
 event_log = []
+# Token → fingerprint mapping
+token_fingerprints = {}
 
 def log_event(verdict: str, endpoint: str, ip: str, detail: str = ""):
     event_log.append({
@@ -54,7 +56,7 @@ def check_for_canary(data: dict, ip: str):
         info = canary_registry.check(token)
         if info:
             fingerprinter.mark_canary_used(ip)
-            log_event("🪤 CANARY TRIGGERED", "/canary", ip,
+            log_event(" CANARY TRIGGERED", "/canary", ip,
                       f"Attacker reused fake token from {info['endpoint']}")
 
 # ─────────────────────────────────────────
@@ -68,14 +70,21 @@ def gateway(endpoint):
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     data = request.get_json(silent=True) or {}
 
-    # Check if attacker is reusing canary tokens
-    check_for_canary(data, ip)
-
     payload   = data.get("payload", "")
     timestamp = data.get("timestamp", "")
     nonce     = data.get("nonce", "")
     mac       = data.get("mac", "")
 
+    fingerprint = ""
+    try:
+        payload_data = json.loads(payload)
+        fingerprint = payload_data.get("fingerprint", "")
+    except:
+        payload_data = {}
+
+    # record fingerprint AFTER extracting it
+
+    token = payload_data.get("token") or payload_data.get("session_token")
     # ── STEP 1: MAC Verification ──────────────────────────────
     if not verify_mac(payload, timestamp, nonce, mac):
         log_event("🚫 REJECTED", endpoint, ip, "MAC mismatch — tampered or forged request")
@@ -101,10 +110,13 @@ def gateway(endpoint):
         replay_count = profile["replay_count"]
         is_bot = profile["is_bot"]
 
+        fp_short = str(fingerprint)[:8] if fingerprint else "none"
+
         log_event(
             "🍯 HONEYPOT",
-            endpoint, ip,
-            f"Replay #{replay_count} | {'BOT' if is_bot else 'human'} | age: {age}s"
+            endpoint,
+            ip,
+            f"Replay #{replay_count} | FP:{fp_short} | {'BOT' if is_bot else 'human'} | age:{age}s"
         )
 
         # Forward silently to honeypot (attacker never knows)
@@ -119,6 +131,34 @@ def gateway(endpoint):
             # Even if honeypot fails, return plausible response
             return jsonify({"status": "success", "message": "Processed"}), 200
 
+
+    # ── STEP 3.5: Token Fingerprint Verification ─────────────────
+    if token:
+        stored_fp = token_fingerprints.get(token)
+
+        if stored_fp is None:
+            # first time seeing this token
+            token_fingerprints[token] = fingerprint
+
+        elif stored_fp != fingerprint:
+            log_event(
+                "🍯 HONEYPOT",
+                endpoint,
+                ip,
+                "Token reused from different device fingerprint"
+            )
+
+            # Send attacker to honeypot
+            try:
+                resp = requests.post(
+                    f"{HONEYPOT_URL}/api/{endpoint}",
+                    json={**data, "_attacker_ip": ip, "_reason": "fingerprint_mismatch"},
+                    timeout=5
+                )
+                return jsonify(resp.json()), resp.status_code
+            except:
+                return jsonify({"status": "success"}), 200
+            
     # ── STEP 4: Fresh Request → Real Backend ─────────────────
     log_event("✅ ALLOWED", endpoint, ip, f"Fresh request — age: {age}s")
     try:
