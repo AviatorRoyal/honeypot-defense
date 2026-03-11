@@ -223,6 +223,20 @@
 const GATEWAY = "http://127.0.0.1:8000";
 let SESSION_TOKEN = null;
 
+function generateFingerprint() {
+  const parts = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + "x" + screen.height,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.hardwareConcurrency || "0"
+  ];
+
+  return btoa(parts.join("|"));
+}
+
+let DEVICE_FP = generateFingerprint();
+
 async function computeMAC(payload, timestamp, nonce) {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -238,6 +252,7 @@ function genNonce() {
 }
 
 async function buildRequest(payloadObj) {
+  payloadObj.fingerprint = DEVICE_FP;
   const payload   = JSON.stringify(payloadObj, Object.keys(payloadObj).sort());
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce     = genNonce();
